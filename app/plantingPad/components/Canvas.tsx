@@ -28,15 +28,15 @@ const Canvas = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.setTransform(viewportScale, 0, 0, viewportScale, viewportX, viewportY);
         ctx.fillStyle = "#dbf4d8";
-        ctx.fillRect(-viewportX, -viewportY, canvas.width + Math.abs(viewportX), canvas.height + Math.abs(viewportY));
+        ctx.fillRect(-viewportX/viewportScale, -viewportY/viewportScale, (canvas.width + Math.abs(viewportX)), (canvas.height + Math.abs(viewportY)));
 
 
         ctx.fillStyle = "#2f5c2f";
         const gridSpacing = 20;
 
-        for (let i = -viewportX; i < canvas.width - viewportX; i++) {
+        for (let i = Math.floor(-viewportX/viewportScale); i < canvas.width - Math.floor(viewportX/viewportScale); i++) {
             if (i % gridSpacing === 0) {
-                for (let j = -viewportY; j < canvas.height - viewportY; j++) {
+                for (let j = Math.floor(-viewportY/viewportScale); j < canvas.height - Math.floor(viewportY/viewportScale); j++) {
                     if (j % gridSpacing === 0) {
                         ctx.fillRect(i, j, 2, 2);
                     }
@@ -85,6 +85,32 @@ const Canvas = () => {
 
     }, [canvasRef, ctx, render]);
 
+    const updateZooming = (e: React.WheelEvent) => {
+        const oldX = viewportX;
+        const oldY = viewportY;
+
+        const localX = e.clientX;
+        const localY = e.clientY;
+
+        const previousScale = viewportScale;
+        const newScale = Math.max(viewportScale + (e.deltaY * -0.001),1);
+        setViewportScale(newScale)
+
+        const newX = localX - (localX - oldX) * (newScale / previousScale);
+        const newY = localY - (localY - oldY) * (newScale / previousScale);
+
+        setViewportX(newX);
+        setViewportY(newY);
+        setViewportScale(newScale);
+    }
+
+
+    const handleScroll = (e: React.WheelEvent) => {
+        updateZooming(e);
+
+        render();
+    }
+
     const handlePan = (e: React.MouseEvent<HTMLCanvasElement>) => {
         e.preventDefault();
         if (!isDragging) return;
@@ -94,9 +120,11 @@ const Canvas = () => {
         render();
     }
 
-    return <canvas onMouseLeave={() => {
-        setIsDragging(false)
-    }} onMouseUp={() => {
+    return <canvas
+        onWheel={handleScroll}
+        onMouseLeave={() => {
+            setIsDragging(false)
+        }} onMouseUp={() => {
         setIsDragging(false)
     }} onMouseDown={(e) => {
         setPrevY(e.clientY);
