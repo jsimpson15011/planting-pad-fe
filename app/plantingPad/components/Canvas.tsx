@@ -32,7 +32,7 @@ const Canvas = () => {
 
 
         ctx.fillStyle = "#2f5c2f";
-        const gridSpacing = 20;
+        const gridSpacing = 50;
 
         for (let i = Math.floor(-viewportX/viewportScale); i < canvas.width - Math.floor(viewportX/viewportScale); i++) {
             if (i % gridSpacing === 0) {
@@ -45,8 +45,8 @@ const Canvas = () => {
             }
         }
 
-        drawRect(0, 0, 50, 50, "blue")
-        drawRect(50, 100, 50, 50, "red")
+        drawRect(1, 1, 50, 50, "blue")
+        drawRect(51, 101, 50, 50, "red")
     }, [canvas, ctx, drawRect, viewportScale, viewportX, viewportY]);
 
 
@@ -132,7 +132,7 @@ const Canvas = () => {
         setIsDragging(true)
     }} onMouseMove={(e) => {
         handlePan(e)
-    }} className="absolute" width={1000} height={1000} ref={canvasRef}></canvas>
+    }} className="absolute" width={2000} height={1200} ref={canvasRef}></canvas>
 }
 
 export default Canvas;
