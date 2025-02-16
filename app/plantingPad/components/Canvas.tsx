@@ -28,12 +28,25 @@ const Canvas = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.setTransform(viewportScale, 0, 0, viewportScale, viewportX, viewportY);
         ctx.fillStyle = "#bcc8d5";
-        ctx.fillRect(-viewportX, -viewportY, canvas.width+Math.abs(viewportX), canvas.height+Math.abs(viewportY));
+        ctx.fillRect(-viewportX, -viewportY, canvas.width + Math.abs(viewportX), canvas.height + Math.abs(viewportY));
 
-        drawRect(10, 0, 50, 50, "blue")
+
+        ctx.fillStyle = "#2f5c2f";
+        const gridSpacing = 20;
+
+        for (let i = -viewportX; i < canvas.width - viewportX; i++) {
+            if (i % gridSpacing === 0) {
+                for (let j = -viewportY; j < canvas.height - viewportY; j++) {
+                    if (j % gridSpacing === 0) {
+                        ctx.fillRect(i, j, 2, 2);
+                    }
+                }
+
+            }
+        }
+
+        drawRect(0, 0, 50, 50, "blue")
         drawRect(50, 100, 50, 50, "red")
-
-
     }, [canvas, ctx, drawRect, viewportScale, viewportX, viewportY]);
 
 
