@@ -32,7 +32,7 @@ const Canvas = () => {
 
 
         ctx.fillStyle = "#2f5c2f";
-        const gridSpacing = 50;
+        const gridSpacing = 25;
 
         for (let i = Math.floor(-viewportX/viewportScale); i < canvas.width - Math.floor(viewportX/viewportScale); i++) {
             if (i % gridSpacing === 0) {
