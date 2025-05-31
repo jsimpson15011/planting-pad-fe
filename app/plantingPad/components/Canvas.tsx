@@ -32,14 +32,98 @@ const Canvas = () => {
         if (!ctx) return;
         ctx.fillStyle = color
         ctx.fillRect(x, y, width, height)
-    }, [ctx])
+    }, [ctx]);
 
-    function getCursorPosition(canvas: HTMLCanvasElement, event: React.MouseEvent): [number, number] {
-        const rect = canvas.getBoundingClientRect();
-        const x = (event.clientX - rect.left - (viewportX)) / viewportScale
-        const y = (event.clientY - rect.top - (viewportY)) / viewportScale
-        return [x, y];
-    }
+    const render = useCallback(() => {
+        if (!ctx || !canvas) return;
+
+        // Get the current canvas dimensions
+        const width = canvas.width;
+        const height = canvas.height;
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        ctx.setTransform(viewportScale, 0, 0, viewportScale, viewportX, viewportY);
+        ctx.fillStyle = "#dbf4d8";
+        ctx.fillRect(
+            -viewportX / viewportScale,
+            -viewportY / viewportScale,
+            width / viewportScale,
+            height / viewportScale
+        );
+
+        ctx.fillStyle = "#2f5c2f";
+
+        // Calculate grid boundaries based on current viewport
+        const startX = Math.floor(-viewportX / viewportScale / gridSpacing) * gridSpacing;
+        const endX = startX + Math.ceil(width / viewportScale / gridSpacing) * gridSpacing;
+        const startY = Math.floor(-viewportY / viewportScale / gridSpacing) * gridSpacing;
+        const endY = startY + Math.ceil(height / viewportScale / gridSpacing) * gridSpacing;
+
+        // Draw grid dots
+        for (let i = startX; i <= endX; i += gridSpacing) {
+            for (let j = startY; j <= endY; j += gridSpacing) {
+                ctx.fillRect(i, j, gridDotSize, gridDotSize);
+            }
+        }
+
+        // Draw layout items
+        layoutItems.forEach(layoutItem => {
+            drawRect(layoutItem.x, layoutItem.y, layoutItem.width, layoutItem.height, layoutItem.bg);
+        });
+    }, [canvas, ctx, drawRect, layoutItems, viewportScale, viewportX, viewportY]);
+
+    // Set up resize observer in a useEffect to avoid recreating it on each render
+    useEffect(() => {
+        if (!canvasRef.current) return;
+
+        const updateCanvasSize = () => {
+            if (!canvasRef.current || !ctx) return;
+
+            // Get the parent container dimensions
+            const container = canvasRef.current.parentElement;
+            if (!container) return;
+
+            // Get the parent's dimensions
+            const parentRect = container.getBoundingClientRect();
+            const newWidth = parentRect.width;
+            const newHeight = parentRect.height;
+
+            // Update the canvas dimensions
+            canvasRef.current.width = newWidth;
+            canvasRef.current.height = newHeight;
+            
+            // Trigger a render with the new dimensions
+            render();
+        };
+
+        const resizeObserver = new ResizeObserver(() => {
+            updateCanvasSize();
+        });
+
+        resizeObserver.observe(canvasRef.current.parentElement as Element);
+        
+        // Initial size update
+        updateCanvasSize();
+
+        // Clean up the observer when the component unmounts
+        return () => {
+            if (canvasRef.current && canvasRef.current.parentElement) {
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+                resizeObserver.unobserve(canvasRef.current.parentElement);
+            }
+            resizeObserver.disconnect();
+        };
+    }, [canvasRef, ctx, render]);
+
+    const getCursorPosition = useCallback(
+        (canvas: HTMLCanvasElement, event: React.MouseEvent): [number, number] => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (event.clientX - rect.left - (viewportX)) / viewportScale
+            const y = (event.clientY - rect.top - (viewportY)) / viewportScale
+            return [x, y];
+        },[viewportScale, viewportX, viewportY]
+    )
 
     function getLayoutItemBounds(item: LayoutItem) {
         const leftBound = item.x - ((item.boundingBoxWidth - item.width) / 2);
@@ -62,36 +146,6 @@ const Canvas = () => {
 
     const gridSpacing = 25;
     const gridDotSize = 2;
-
-    const render = useCallback(() => {
-        if (!ctx || !canvas) return;
-
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.setTransform(viewportScale, 0, 0, viewportScale, viewportX, viewportY);
-        ctx.fillStyle = "#dbf4d8";
-        ctx.fillRect(-viewportX / viewportScale, -viewportY / viewportScale, (canvas.width + Math.abs(viewportX)), (canvas.height + Math.abs(viewportY)));
-
-
-        ctx.fillStyle = "#2f5c2f";
-
-
-        for (let i = Math.floor(-viewportX / viewportScale); i < canvas.width - Math.floor(viewportX / viewportScale); i++) {
-            if (i % gridSpacing === 0) {
-                for (let j = Math.floor(-viewportY / viewportScale); j < canvas.height - Math.floor(viewportY / viewportScale); j++) {
-                    if (j % gridSpacing === 0) {
-                        ctx.fillRect(i, j, gridDotSize, gridDotSize);
-                    }
-                }
-
-            }
-        }
-
-        layoutItems.forEach(layoutItem => {
-            drawRect(layoutItem.x, layoutItem.y, layoutItem.width, layoutItem.height, layoutItem.bg);
-        })
-    }, [canvas, ctx, drawRect, layoutItems, viewportScale, viewportX, viewportY]);
-
 
     const updatePanning = (e: React.MouseEvent<HTMLCanvasElement>) => {
         const localX = e.clientX;
@@ -130,6 +184,11 @@ const Canvas = () => {
     useEffect(() => {
         window.addEventListener("resize", reOffset);
         window.addEventListener("scroll", reOffset);
+        
+        return () => {
+            window.removeEventListener("resize", reOffset);
+            window.removeEventListener("scroll", reOffset);
+        };
     }, [reOffset]);
 
     useEffect(() => {
@@ -163,10 +222,8 @@ const Canvas = () => {
         setViewportScale(newScale);
     }
 
-
     const handleScroll = (e: React.WheelEvent) => {
         updateZooming(e);
-
         render();
     }
 
@@ -182,15 +239,14 @@ const Canvas = () => {
         if (currentMode !== "panning") return;
 
         updatePanning(e);
-
         render();
     }
+    
     const handleMoveElement = (e: React.MouseEvent<HTMLCanvasElement>) => {
         e.preventDefault();
         if (currentMode !== "moving") return;
 
         updateElement(e);
-
         render();
     }
 
@@ -198,23 +254,28 @@ const Canvas = () => {
         onWheel={handleScroll}
         onMouseLeave={() => {
             setCurrentMode(null);
-        }} onMouseUp={() => {
-        setCurrentMode(null);
-
-    }} onMouseDown={(e) => {
-        setPrevY(e.clientY);
-        setPrevX(e.clientX);
-        const selectedElement = findItemClicked(e);
-        if (selectedElement) {
-            setCurrentMode("moving");
-            setSelectedItemId(selectedElement.id);
-            return;
-        }
-        setCurrentMode("panning");
-    }} onMouseMove={(e) => {
-        handlePan(e)
-        handleMoveElement(e);
-    }} className="absolute" width={2000} height={1200} ref={canvasRef}></canvas>
+        }} 
+        onMouseUp={() => {
+            setCurrentMode(null);
+        }} 
+        onMouseDown={(e) => {
+            setPrevY(e.clientY);
+            setPrevX(e.clientX);
+            const selectedElement = findItemClicked(e);
+            if (selectedElement) {
+                setCurrentMode("moving");
+                setSelectedItemId(selectedElement.id);
+                return;
+            }
+            setCurrentMode("panning");
+        }} 
+        onMouseMove={(e) => {
+            handlePan(e)
+            handleMoveElement(e);
+        }} 
+        className="w-full h-full"
+        ref={canvasRef}
+    ></canvas>
 }
 
 export default Canvas;

@@ -1,9 +1,18 @@
-import Canvas from "@/app/plantingPad/components/Canvas";
+"use client"
+import dynamic from "next/dynamic";
+
+const Canvas = dynamic(() => import("@/app/plantingPad/components/Canvas"),{
+    ssr: false,
+})
 
 export default function Home() {
     return (
-        <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-            <Canvas/>
+        <div className="flex h-screen">
+            <div className="h-full w-2/12 bg-green-100 border-l-2 border-l-black"></div>
+            <div className="h-full w-10/12">
+                <Canvas/>
+            </div>
+
         </div>
     );
 }
